@@ -6055,5 +6055,734 @@ window.Eretta = {
   openProfile
 };
 </script>
+  /* =========================================================
+   ERETTA AUTH SYSTEM
+   Register / Login / Logout / Session
+   ========================================================= */
+
+const AUTH_STORAGE_KEY = "eretta_auth_v1";
+const SESSION_STORAGE_KEY = "eretta_session_v1";
+
+function getAuthUsers() {
+    try {
+        return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "[]");
+    } catch {
+        return [];
+    }
+}
+
+function saveAuthUsers(users) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(users));
+}
+
+function getSessionUserId() {
+    return localStorage.getItem(SESSION_STORAGE_KEY);
+}
+
+function setSessionUserId(userId) {
+    if (userId) {
+        localStorage.setItem(SESSION_STORAGE_KEY, userId);
+    } else {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+}
+
+function getCurrentAuthUser() {
+    const userId = getSessionUserId();
+
+    if (!userId) {
+        return null;
+    }
+
+    const users = getAuthUsers();
+
+    return users.find(user => user.id === userId) || null;
+}
+
+function createAuthUser(username, password) {
+    const cleanUsername = username
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "");
+
+    if (!cleanUsername) {
+        throw new Error("Введите username.");
+    }
+
+    if (cleanUsername.length < 3) {
+        throw new Error("Username должен содержать минимум 3 символа.");
+    }
+
+    if (!/^[a-z0-9._]+$/.test(cleanUsername)) {
+        throw new Error(
+            "Username может содержать только латинские буквы, цифры, точку и _."
+        );
+    }
+
+    if (!password || password.length < 6) {
+        throw new Error("Пароль должен содержать минимум 6 символов.");
+    }
+
+    const users = getAuthUsers();
+
+    const exists = users.some(
+        user => user.username === cleanUsername
+    );
+
+    if (exists) {
+        throw new Error("Этот username уже занят.");
+    }
+
+    const user = {
+        id:
+            "user_" +
+            Date.now().toString(36) +
+            "_" +
+            Math.random().toString(36).slice(2, 9),
+
+        username: cleanUsername,
+
+        /*
+         * ВАЖНО:
+         * Это временная клиентская авторизация.
+         * Для production позже подключим backend,
+         * чтобы пароль никогда не хранился в localStorage.
+         */
+        password,
+
+        displayName: cleanUsername,
+
+        avatar: null,
+
+        followers: [],
+
+        following: [],
+
+        createdAt: new Date().toISOString()
+    };
+
+    users.push(user);
+
+    saveAuthUsers(users);
+
+    setSessionUserId(user.id);
+
+    return user;
+}
+
+function loginAuthUser(username, password) {
+    const cleanUsername = username
+        .trim()
+        .toLowerCase();
+
+    const users = getAuthUsers();
+
+    const user = users.find(
+        item =>
+            item.username === cleanUsername &&
+            item.password === password
+    );
+
+    if (!user) {
+        throw new Error("Неверный username или пароль.");
+    }
+
+    setSessionUserId(user.id);
+
+    return user;
+}
+
+function logoutAuthUser() {
+    setSessionUserId(null);
+
+    /*
+     * Если в проекте уже есть собственная
+     * переменная session/currentUser,
+     * очищаем её тоже.
+     */
+    if (typeof state !== "undefined" && state) {
+        state.session = null;
+    }
+
+    if (typeof currentUser !== "undefined") {
+        try {
+            currentUser = null;
+        } catch {}
+    }
+
+    if (typeof render === "function") {
+        render();
+    }
+}
+
+/* =========================================================
+   AUTH UI
+   ========================================================= */
+
+let authMode = "login";
+
+function showLogin() {
+    authMode = "login";
+
+    if (typeof render === "function") {
+        render();
+    }
+}
+
+function showRegister() {
+    authMode = "register";
+
+    if (typeof render === "function") {
+        render();
+    }
+}
+
+function renderAuthScreen() {
+    const register = authMode === "register";
+
+    return `
+        <div class="eretta-auth-page">
+
+            <div class="eretta-auth-background"></div>
+
+            <div class="eretta-auth-card">
+
+                <div class="eretta-auth-logo">
+                    Eretta
+                </div>
+
+                <div class="eretta-auth-title">
+                    ${register
+                        ? "Создай аккаунт"
+                        : "С возвращением"}
+                </div>
+
+                <div class="eretta-auth-subtitle">
+                    ${register
+                        ? "Присоединяйся к Eretta"
+                        : "Войди в свой аккаунт"}
+                </div>
+
+                <form
+                    class="eretta-auth-form"
+                    onsubmit="handleAuthSubmit(event)"
+                >
+
+                    <label class="eretta-auth-label">
+                        Username
+                    </label>
+
+                    <input
+                        id="erettaAuthUsername"
+                        class="eretta-auth-input"
+                        type="text"
+                        autocomplete="username"
+                        placeholder="username"
+                        minlength="3"
+                        maxlength="30"
+                        required
+                    >
+
+                    <label class="eretta-auth-label">
+                        Password
+                    </label>
+
+                    <input
+                        id="erettaAuthPassword"
+                        class="eretta-auth-input"
+                        type="password"
+                        autocomplete="${register
+                            ? "new-password"
+                            : "current-password"}"
+                        placeholder="••••••••"
+                        minlength="6"
+                        required
+                    >
+
+                    ${
+                        register
+                            ? `
+                                <label class="eretta-auth-label">
+                                    Подтверди пароль
+                                </label>
+
+                                <input
+                                    id="erettaAuthPasswordConfirm"
+                                    class="eretta-auth-input"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    placeholder="••••••••"
+                                    minlength="6"
+                                    required
+                                >
+                            `
+                            : ""
+                    }
+
+                    <div
+                        id="erettaAuthError"
+                        class="eretta-auth-error"
+                        hidden
+                    ></div>
+
+                    <button
+                        type="submit"
+                        class="eretta-auth-submit"
+                    >
+                        ${
+                            register
+                                ? "Создать аккаунт"
+                                : "Войти"
+                        }
+                    </button>
+
+                </form>
+
+                <div class="eretta-auth-switch">
+
+                    ${
+                        register
+                            ? `
+                                <span>
+                                    Уже есть аккаунт?
+                                </span>
+
+                                <button
+                                    type="button"
+                                    onclick="showLogin()"
+                                >
+                                    Войти
+                                </button>
+                            `
+                            : `
+                                <span>
+                                    Нет аккаунта?
+                                </span>
+
+                                <button
+                                    type="button"
+                                    onclick="showRegister()"
+                                >
+                                    Зарегистрироваться
+                                </button>
+                            `
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+    `;
+}
+
+function handleAuthSubmit(event) {
+    event.preventDefault();
+
+    const username =
+        document
+            .getElementById("erettaAuthUsername")
+            ?.value || "";
+
+    const password =
+        document
+            .getElementById("erettaAuthPassword")
+            ?.value || "";
+
+    const errorElement =
+        document.getElementById("erettaAuthError");
+
+    try {
+
+        let user;
+
+        if (authMode === "register") {
+
+            const confirmation =
+                document
+                    .getElementById(
+                        "erettaAuthPasswordConfirm"
+                    )
+                    ?.value || "";
+
+            if (password !== confirmation) {
+                throw new Error(
+                    "Пароли не совпадают."
+                );
+            }
+
+            user = createAuthUser(
+                username,
+                password
+            );
+
+        } else {
+
+            user = loginAuthUser(
+                username,
+                password
+            );
+
+        }
+
+        /*
+         * Если существующая система Eretta
+         * использует state.session,
+         * синхронизируем её с новым аккаунтом.
+         */
+        if (typeof state !== "undefined" && state) {
+            state.session = user.id;
+
+            if (typeof save === "function") {
+                save();
+            }
+        }
+
+        /*
+         * Возвращаем пользователя в приложение.
+         */
+        if (typeof page !== "undefined") {
+            page = "feed";
+        }
+
+        if (typeof modal !== "undefined") {
+            modal = null;
+        }
+
+        if (typeof render === "function") {
+            render();
+        }
+
+    } catch (error) {
+
+        if (errorElement) {
+            errorElement.hidden = false;
+            errorElement.textContent =
+                error.message ||
+                "Не удалось выполнить операцию.";
+        }
+    }
+}
+
+/* =========================================================
+   AUTH GUARD
+   ========================================================= */
+
+function isAuthenticated() {
+    return !!getCurrentAuthUser();
+}
+
+function requireAuthentication() {
+    if (!isAuthenticated()) {
+        authMode = "login";
+
+        return false;
+    }
+
+    return true;
+}
 </body>
+    </style>
+      /* =========================================================
+   ERETTA AUTH UI
+   ========================================================= */
+
+.eretta-auth-page {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+
+    min-height: 100dvh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding:
+        max(24px, env(safe-area-inset-top))
+        20px
+        max(24px, env(safe-area-inset-bottom))
+        20px;
+
+    background: #050505;
+
+    overflow-y: auto;
+}
+
+.eretta-auth-background {
+    position: fixed;
+    inset: 0;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 45, 85, .16),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 20% 80%,
+            rgba(120, 80, 255, .12),
+            transparent 30%
+        );
+}
+
+.eretta-auth-card {
+    position: relative;
+
+    width: min(430px, 100%);
+
+    padding: 34px 30px;
+
+    border-radius: 26px;
+
+    background:
+        rgba(20, 20, 22, .92);
+
+    border:
+        1px solid rgba(255,255,255,.09);
+
+    box-shadow:
+        0 30px 100px rgba(0,0,0,.55);
+
+    backdrop-filter:
+        blur(25px);
+
+    -webkit-backdrop-filter:
+        blur(25px);
+
+    animation:
+        erretaAuthAppear .28s ease both;
+}
+
+@keyframes erretaAuthAppear {
+
+    from {
+        opacity: 0;
+        transform:
+            translateY(12px)
+            scale(.98);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+.eretta-auth-logo {
+    margin-bottom: 34px;
+
+    font-size: 28px;
+    line-height: 1;
+
+    font-weight: 900;
+    letter-spacing: -1.2px;
+
+    color: #fff;
+}
+
+.eretta-auth-title {
+    color: #fff;
+
+    font-size: 30px;
+    line-height: 1.1;
+
+    font-weight: 850;
+
+    letter-spacing: -.8px;
+}
+
+.eretta-auth-subtitle {
+    margin-top: 9px;
+    margin-bottom: 28px;
+
+    color: #99999f;
+
+    font-size: 14px;
+}
+
+.eretta-auth-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.eretta-auth-label {
+    margin:
+        12px
+        0
+        7px;
+
+    color: #c7c7cc;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.eretta-auth-input {
+    width: 100%;
+
+    min-height: 52px;
+
+    padding:
+        0
+        15px;
+
+    border-radius: 14px;
+
+    border:
+        1px solid rgba(255,255,255,.1);
+
+    background:
+        rgba(255,255,255,.055);
+
+    color: #fff;
+
+    outline: none;
+
+    transition:
+        border-color .18s ease,
+        background .18s ease,
+        box-shadow .18s ease;
+}
+
+.eretta-auth-input::placeholder {
+    color: #6f6f75;
+}
+
+.eretta-auth-input:hover {
+    background:
+        rgba(255,255,255,.075);
+}
+
+.eretta-auth-input:focus {
+    border-color:
+        rgba(255,255,255,.38);
+
+    background:
+        rgba(255,255,255,.085);
+
+    box-shadow:
+        0 0 0 4px
+        rgba(255,255,255,.055);
+}
+
+.eretta-auth-submit {
+    width: 100%;
+
+    min-height: 52px;
+
+    margin-top: 22px;
+
+    border-radius: 14px;
+
+    background: #fff;
+    color: #000;
+
+    font-weight: 850;
+
+    transition:
+        transform .16s ease,
+        opacity .16s ease;
+}
+
+.eretta-auth-submit:hover {
+    opacity: .92;
+}
+
+.eretta-auth-submit:active {
+    transform: scale(.98);
+}
+
+.eretta-auth-error {
+    margin-top: 13px;
+
+    padding:
+        11px
+        13px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(255,59,48,.11);
+
+    color:
+        #ff6259;
+
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.eretta-auth-switch {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    margin-top: 24px;
+
+    color: #88888e;
+
+    font-size: 13px;
+
+    text-align: center;
+}
+
+.eretta-auth-switch button {
+    color: #fff;
+
+    font-weight: 800;
+
+    cursor: pointer;
+}
+
+.eretta-auth-switch button:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+
+    .eretta-auth-page {
+        align-items: flex-start;
+
+        padding-top:
+            max(
+                70px,
+                calc(
+                    env(safe-area-inset-top)
+                    + 40px
+                )
+            );
+    }
+
+    .eretta-auth-card {
+        padding:
+            28px 20px;
+
+        border-radius: 22px;
+    }
+
+    .eretta-auth-title {
+        font-size: 27px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .eretta-auth-card {
+        animation: none;
+    }
+
+    .eretta-auth-input,
+    .eretta-auth-submit {
+        transition: none;
+    }
+}
 </html>
+      
+
