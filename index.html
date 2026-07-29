@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<title>Eretta</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ЛЕНТА */
+
+.feed {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+
+  scroll-snap-type: y mandatory;
+
+  scrollbar-width: none;
+}
+
+.feed::-webkit-scrollbar {
+  display: none;
+}
+
+.post {
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+
+  position: relative;
+
+  scroll-snap-align: start;
+  overflow: hidden;
+
+  background:
+    radial-gradient(circle at 30% 20%, #454545, transparent 35%),
+    linear-gradient(145deg, #111, #292929, #050505);
+}
+
+/* Верх */
+
+.header {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: 75px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+
+  z-index: 20;
+
+  background: linear-gradient(
+    rgba(0,0,0,.55),
+    transparent
+  );
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.header button {
+  width: 42px;
+  height: 42px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: rgba(255,255,255,.15);
+  color: white;
+
+  font-size: 23px;
+}
+
+/* Центр */
+
+.fake-video {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 70px;
+
+  opacity: .18;
+}
+
+/* Информация */
+
+.info {
+  position: absolute;
+
+  left: 18px;
+  right: 90px;
+  bottom: 95px;
+
+  z-index: 5;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 12px;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #fff;
+  color: #111;
+
+  font-weight: 800;
+}
+
+.description {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* Кнопки */
+
+.actions {
+  position: absolute;
+
+  right: 15px;
+  bottom: 105px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 22px;
+
+  z-index: 10;
+}
+
+.action {
+  border: 0;
+  background: none;
+
+  color: white;
+
+  font-size: 31px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  cursor: pointer;
+}
+
+.action small {
+  margin-top: 3px;
+
+  font-size: 12px;
+}
+
+/* Нижняя панель */
+
+.bottom {
+  position: fixed;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 65px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  z-index: 30;
+
+  background: rgba(0,0,0,.75);
+
+  backdrop-filter: blur(15px);
+}
+
+.bottom button {
+  border: 0;
+  background: none;
+
+  color: white;
+
+  font-size: 22px;
+}
+
+.bottom span {
+  display: block;
+
+  margin-top: 3px;
+
+  font-size: 9px;
+}
+
+.create {
+  width: 48px;
+  height: 38px;
+
+  border-radius: 12px !important;
+
+  background: white !important;
+  color: black !important;
+
+  font-size: 27px !important;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header class="header">
+  <div class="logo">Eretta</div>
+
+  <button onclick="alert('Поиск скоро появится')">
+    🔎
+  </button>
+</header>
+
+
+<main class="feed">
+
+  <!-- ПОСТ 1 -->
+
+  <section class="post">
+
+    <div class="fake-video">▶</div>
+
+    <div class="info">
+
+      <div class="author">
+        <div class="avatar">E</div>
+        @eretta
+      </div>
+
+      <div class="description">
+        Добро пожаловать в Eretta 🚀
+        <br>
+        Это наша первая публикация.
+      </div>
+
+    </div>
+
+
+    <div class="actions">
+
+      <button class="action" onclick="like(this)">
+        ♡
+        <small>0</small>
+      </button>
+
+      <button
+        class="action"
+        onclick="comments()">
+        💬
+        <small>0</small>
+      </button>
+
+      <button class="action"
+              onclick="sharePost()">
+        ↗
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- ПОСТ 2 -->
+
+  <section class="post">
+
+    <div class="fake-video">◉</div>
+
+    <div class="info">
+
+      <div class="author">
+        <div class="avatar">A</div>
+        @alex
+      </div>
+
+      <div class="description">
+        Второй пост в Eretta 👀
+      </div>
+
+    </div>
+
+
+    <div class="actions">
+
+      <button class="action" onclick="like(this)">
+        ♡
+        <small>0</small>
+      </button>
+
+      <button
+        class="action"
+        onclick="comments()">
+        💬
+        <small>0</small>
+      </button>
+
+      <button class="action"
+              onclick="sharePost()">
+        ↗
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- ПОСТ 3 -->
+
+  <section class="post">
+
+    <div class="fake-video">✦</div>
+
+    <div class="info">
+
+      <div class="author">
+        <div class="avatar">M</div>
+        @max
+      </div>
+
+      <div class="description">
+        Eretta только начинается 🔥
+      </div>
+
+    </div>
+
+
+    <div class="actions">
+
+      <button class="action" onclick="like(this)">
+        ♡
+        <small>0</small>
+      </button>
+
+      <button
+        class="action"
+        onclick="comments()">
+        💬
+        <small>0</small>
+      </button>
+
+      <button class="action"
+              onclick="sharePost()">
+        ↗
+      </button>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<nav class="bottom">
+
+  <button>
+    🏠
+    <span>Главная</span>
+  </button>
+
+  <button>
+    🔎
+    <span>Поиск</span>
+  </button>
+
+  <button class="create"
+          onclick="createPost()">
+    ＋
+  </button>
+
+  <button>
+    ♡
+    <span>Активность</span>
+  </button>
+
+  <button>
+    👤
+    <span>Профиль</span>
+  </button>
+
+</nav>
+
+</div>
+
+
+<script>
+
+function like(button) {
+
+  let count = Number(
+    button.querySelector("small").textContent
+  );
+
+  if (button.dataset.liked !== "true") {
+
+    count++;
+
+    button.dataset.liked = "true";
+
+    button.firstChild.textContent = "♥ ";
+
+  } else {
+
+    count--;
+
+    button.dataset.liked = "false";
+
+    button.firstChild.textContent = "♡ ";
+
+  }
+
+  button.querySelector("small").textContent = count;
+
+  /*
+   * Пока сохраняем лайк локально.
+   * Позже здесь появится настоящая
+   * синхронизация с сервером.
+   */
+
+}
+
+
+function comments() {
+
+  alert(
+    "💬 Комментарии Eretta\n\n" +
+    "Эта система появится следующим шагом."
+  );
+
+}
+
+
+function sharePost() {
+
+  alert(
+    "↗ Поделиться\n\n" +
+    "Система ссылок Eretta появится скоро."
+  );
+
+}
+
+
+function createPost() {
+
+  alert(
+    "＋ Создать\n\n" +
+    "Здесь мы сделаем загрузку видео."
+  );
+
+}
+
+</script>
+
+</body>
+</html>
